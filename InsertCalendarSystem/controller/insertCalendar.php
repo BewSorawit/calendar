@@ -40,20 +40,18 @@ while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
 
     // Check if all required IDs are valid
     if ($idName !== null && $idCheckCon !== null && $idDay !== null && $idCheckRest !== null && $idType !== null) {
-        // Insert the data into the 'date' table using a prepared statement
-        $insertQuery = "INSERT INTO date (idDate, date, idNoWeek, idName, idCheckCon, idDay, idCheckRest, idType) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        // Insert the data into the 'date' table
+        $insertQuery = "INSERT INTO date 
+                        SET idDate = '$idDate', 
+                            date = '$date', 
+                            idNoWeek = '$idNoWeek', 
+                            idName = '$idName', 
+                            idCheckCon = '$idCheckCon', 
+                            idDay = '$idDay', 
+                            idCheckRest = '$idCheckRest', 
+                            idType = '$idType'";
 
-        $stmt = mysqli_prepare($conn, $insertQuery);
-
-        if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "ssssssss", $idDate, $date, $idNoWeek, $idName, $idCheckCon, $idDay, $idCheckRest, $idType);
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
-        } else {
-            // Log or handle the error for the prepared statement
-            echo 'Error preparing statement: ' . mysqli_error($conn);
-        }
+        mysqli_query($conn, $insertQuery);
     } else {
         // Log or handle the error for the invalid row (missing foreign key, etc.)
         // You can add more specific error handling here based on your requirements
@@ -75,27 +73,26 @@ echo "<script>
     })
 </script>";
 
-header("refresh:2; url=../views/home.php");
+header("refresh:1; url=../views/home.php");
 
 require("connection_close.php");
 
-// Function to get ID from a table based on a given value using prepared statement
+// Function to get ID from a table based on a given value
 function getIdFromTable($conn, $tableName, $idColumnName, $valueColumnName, $value) {
-    $sql = "SELECT $idColumnName FROM $tableName WHERE $valueColumnName = ?";
-    $stmt = mysqli_prepare($conn, $sql);
-    
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "s", $value);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_bind_result($stmt, $id);
-        mysqli_stmt_fetch($stmt);
-        mysqli_stmt_close($stmt);
+    // Escape the value to handle apostrophes and other special characters
+    $escapedValue = mysqli_real_escape_string($conn, $value);
 
-        return $id;
-    } else {
-        // Log or handle the error for the prepared statement
-        echo 'Error preparing statement: ' . mysqli_error($conn);
+    $sql = "SELECT $idColumnName FROM $tableName WHERE $valueColumnName = '$escapedValue'";
+    $result = mysqli_query($conn, $sql);
+
+    if (!$result) {
+        // Handle the SQL error, log, or display an error message
+        echo 'Error in SQL query: ' . mysqli_error($conn);
         return null;
     }
+
+    $row = mysqli_fetch_assoc($result);
+    return $row ? $row[$idColumnName] : null;
 }
+
 ?>
