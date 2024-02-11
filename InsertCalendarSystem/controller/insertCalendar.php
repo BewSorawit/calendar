@@ -2,6 +2,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <?php
+// Include the connection file
 require("connection_connect.php");
 
 // Delete all records from the 'date' table
@@ -16,22 +17,11 @@ fgetcsv($csvFile);
 
 // Parse data from CSV file line by line        
 while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
-    // Get row data
-    $idDate = $getData[0];
-    $csvDate = $getData[1];
-    $numWeek = $getData[2];
-    $nameOf = $getData[3];
-    $continuousHoliday = $getData[4];
-    $nameDay = $getData[5];
-    $checkHoliday = $getData[6];
-    $nameType = $getData[7];
-
-    // Convert the CSV date format to MySQL format
-    $dateObj = DateTime::createFromFormat('m/d/Y', $csvDate);
-    $date = $dateObj ? $dateObj->format('Y-m-d') : null;
+    // Extract data from CSV row
+    list($idDate, $date, $numWeek, $nameOf, $continuousHoliday, $nameDay, $checkHoliday, $nameType) = $getData;
 
     // Get corresponding IDs from other tables
-    $idNoWeek = $numWeek; // Assuming numWeek is equivalent to idNoWeek
+    $idNoWeek = $numWeek;
     $idName = getIdFromTable($conn, 'nameof', 'idName', 'nameOf', $nameOf);
     $idCheckCon = getIdFromTable($conn, 'checkcon', 'idCheckCon', 'continuousHoliday', $continuousHoliday);
     $idDay = getIdFromTable($conn, 'dayofweek', 'idDay', 'nameDay', $nameDay);
@@ -42,17 +32,19 @@ while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
     $insertQuery = "INSERT INTO date (idDate, date, idNoWeek, idName, idCheckCon, idDay, idCheckRest, idType) 
                     VALUES ('$idDate', '$date', '$idNoWeek', '$idName', '$idCheckCon', '$idDay', '$idCheckRest', '$idType')";
 
+    // Execute the query
     mysqli_query($conn, $insertQuery);
 }
 
 // Close opened CSV file
 fclose($csvFile);
 
+// Display success message using SweetAlert
 echo "<script>
     $(document).ready(function() {
         Swal.fire({
-            title: 'สำเร็จ',
-            text: 'เพิ่มข้อมูลสำเร็จ!',
+            title: 'Success',
+            text: 'Data added successfully!',
             icon: 'success',
             timer: 5000,
             showConfirmButton: false
@@ -60,15 +52,30 @@ echo "<script>
     })
 </script>";
 
+// Refresh page after 2 seconds
 header("refresh:2; url=../views/home.php");
 
+// Close the database connection
 require("connection_close.php");
 
 // Function to get ID from a table based on a given value
 function getIdFromTable($conn, $tableName, $idColumnName, $valueColumnName, $value) {
-    $sql = "SELECT $idColumnName FROM $tableName WHERE $valueColumnName = '$value'";
+    // Escape the value to prevent SQL injection and handle special characters
+    $escapedValue = mysqli_real_escape_string($conn, $value);
+
+    // Build and execute the query
+    $sql = "SELECT $idColumnName FROM $tableName WHERE $valueColumnName = '$escapedValue'";
     $result = mysqli_query($conn, $sql);
+
+    // Check for errors in the SQL query
+    if (!$result) {
+        die('Error in SQL query: ' . mysqli_error($conn));
+    }
+
+    // Fetch the result and free the result set
     $row = mysqli_fetch_assoc($result);
+    mysqli_free_result($result);
+
     return $row[$idColumnName];
 }
 ?>
