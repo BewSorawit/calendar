@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 11, 2024 at 11:15 AM
+-- Generation Time: Feb 11, 2024 at 03:51 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -117,8 +117,8 @@ CREATE TABLE `nameof` (
 
 INSERT INTO `nameof` (`idName`, `nameOf`) VALUES
 (0, 'nomalDay'),
-(1, 'ปีใหม่'),
-(2, 'มาฆบูชา'),
+(1, 'newyear'),
+(2, 'Makha Bucha'),
 (3, 'จักรี'),
 (4, 'แรงงาน'),
 (5, 'ฉัตรมงคล'),
