@@ -1,6 +1,3 @@
-<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <?php
 // Include the connection file
 require("connection_connect.php");
@@ -28,29 +25,24 @@ while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
     $idCheckRest = getIdFromTable($conn, 'checkrest', 'idCheckRest', 'checkHoliday', $checkHoliday);
     $idType = getIdFromTable($conn, 'typerest', 'idType', 'nameType', $nameType);
 
-    // Insert the data into the 'date' table
-    $insertQuery = "INSERT INTO date (idDate, date, idNoWeek, idName, idCheckCon, idDay, idCheckRest, idType) 
-                    VALUES ('$idDate', '$date', '$idNoWeek', '$idName', '$idCheckCon', '$idDay', '$idCheckRest', '$idType')";
+    // Check if any foreign key IDs are null
+    if ($idName !== null && $idCheckCon !== null && $idDay !== null && $idCheckRest !== null && $idType !== null) {
+        // Insert the data into the 'date' table
+        $insertQuery = "INSERT INTO date (idDate, date, idNoWeek, idName, idCheckCon, idDay, idCheckRest, idType) 
+                        VALUES ('$idDate', '$date', '$idNoWeek', '$idName', '$idCheckCon', '$idDay', '$idCheckRest', '$idType')";
 
-    // Execute the query
-    mysqli_query($conn, $insertQuery);
+        // Execute the query
+        mysqli_query($conn, $insertQuery);
+    } else {
+        // Log or handle the error for the invalid row (missing foreign key, etc.)
+        // You can add more specific error handling here based on your requirements
+        // For example, log the error message
+        error_log("Invalid row: ID Name: $idName, ID Check Con: $idCheckCon, ID Day: $idDay, ID Check Rest: $idCheckRest, ID Type: $idType");
+    }
 }
 
 // Close opened CSV file
 fclose($csvFile);
-
-// Display success message using SweetAlert
-echo "<script>
-    $(document).ready(function() {
-        Swal.fire({
-            title: 'Success',
-            text: 'Data added successfully!',
-            icon: 'success',
-            timer: 5000,
-            showConfirmButton: false
-        });
-    })
-</script>";
 
 // Refresh page after 2 seconds
 header("refresh:2; url=../views/home.php");
