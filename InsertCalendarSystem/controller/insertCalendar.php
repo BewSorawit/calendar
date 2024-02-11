@@ -1,5 +1,7 @@
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <?php
-// Include the connection file
 require("connection_connect.php");
 
 // Delete all records from the 'date' table
@@ -14,60 +16,86 @@ fgetcsv($csvFile);
 
 // Parse data from CSV file line by line        
 while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
-    // Extract data from CSV row
-    list($idDate, $date, $numWeek, $nameOf, $continuousHoliday, $nameDay, $checkHoliday, $nameType) = $getData;
+    // Get row data
+    $idDate = $getData[0];
+    $csvDate = $getData[1];
+    $numWeek = $getData[2];
+    $nameOf = $getData[3];
+    $continuousHoliday = $getData[4];
+    $nameDay = $getData[5];
+    $checkHoliday = $getData[6];
+    $nameType = $getData[7];
+
+    // Convert the CSV date format to MySQL format
+    $dateObj = DateTime::createFromFormat('Y-m-d', $csvDate);
+    $date = $dateObj ? $dateObj->format('Y-m-d') : null;
 
     // Get corresponding IDs from other tables
-    $idNoWeek = $numWeek;
+    $idNoWeek = $numWeek; // Assuming numWeek is equivalent to idNoWeek
     $idName = getIdFromTable($conn, 'nameof', 'idName', 'nameOf', $nameOf);
     $idCheckCon = getIdFromTable($conn, 'checkcon', 'idCheckCon', 'continuousHoliday', $continuousHoliday);
     $idDay = getIdFromTable($conn, 'dayofweek', 'idDay', 'nameDay', $nameDay);
     $idCheckRest = getIdFromTable($conn, 'checkrest', 'idCheckRest', 'checkHoliday', $checkHoliday);
     $idType = getIdFromTable($conn, 'typerest', 'idType', 'nameType', $nameType);
 
-    // Check if any foreign key IDs are null
+    // Check if all required IDs are valid
     if ($idName !== null && $idCheckCon !== null && $idDay !== null && $idCheckRest !== null && $idType !== null) {
-        // Insert the data into the 'date' table
+        // Insert the data into the 'date' table using a prepared statement
         $insertQuery = "INSERT INTO date (idDate, date, idNoWeek, idName, idCheckCon, idDay, idCheckRest, idType) 
-                        VALUES ('$idDate', '$date', '$idNoWeek', '$idName', '$idCheckCon', '$idDay', '$idCheckRest', '$idType')";
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        // Execute the query
-        mysqli_query($conn, $insertQuery);
+        $stmt = mysqli_prepare($conn, $insertQuery);
+
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, "ssssssss", $idDate, $date, $idNoWeek, $idName, $idCheckCon, $idDay, $idCheckRest, $idType);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        } else {
+            // Log or handle the error for the prepared statement
+            echo 'Error preparing statement: ' . mysqli_error($conn);
+        }
     } else {
         // Log or handle the error for the invalid row (missing foreign key, etc.)
         // You can add more specific error handling here based on your requirements
-        // For example, log the error message
-        error_log("Invalid row: ID Name: $idName, ID Check Con: $idCheckCon, ID Day: $idDay, ID Check Rest: $idCheckRest, ID Type: $idType");
     }
 }
 
 // Close opened CSV file
 fclose($csvFile);
 
-// Refresh page after 2 seconds
+echo "<script>
+    $(document).ready(function() {
+        Swal.fire({
+            title: 'สำเร็จ',
+            text: 'เพิ่มข้อมูลสำเร็จ!',
+            icon: 'success',
+            timer: 5000,
+            showConfirmButton: false
+        });
+    })
+</script>";
+
 header("refresh:2; url=../views/home.php");
 
-// Close the database connection
 require("connection_close.php");
 
-// Function to get ID from a table based on a given value
+// Function to get ID from a table based on a given value using prepared statement
 function getIdFromTable($conn, $tableName, $idColumnName, $valueColumnName, $value) {
-    // Escape the value to prevent SQL injection and handle special characters
-    $escapedValue = mysqli_real_escape_string($conn, $value);
+    $sql = "SELECT $idColumnName FROM $tableName WHERE $valueColumnName = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "s", $value);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $id);
+        mysqli_stmt_fetch($stmt);
+        mysqli_stmt_close($stmt);
 
-    // Build and execute the query
-    $sql = "SELECT $idColumnName FROM $tableName WHERE $valueColumnName = '$escapedValue'";
-    $result = mysqli_query($conn, $sql);
-
-    // Check for errors in the SQL query
-    if (!$result) {
-        die('Error in SQL query: ' . mysqli_error($conn));
+        return $id;
+    } else {
+        // Log or handle the error for the prepared statement
+        echo 'Error preparing statement: ' . mysqli_error($conn);
+        return null;
     }
-
-    // Fetch the result and free the result set
-    $row = mysqli_fetch_assoc($result);
-    mysqli_free_result($result);
-
-    return $row[$idColumnName];
 }
 ?>
