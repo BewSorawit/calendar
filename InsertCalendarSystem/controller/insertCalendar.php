@@ -14,24 +14,26 @@ $csvFile = fopen($_FILES['file']['tmp_name'], 'r');
 // Skip the first line
 fgetcsv($csvFile);
 
+// Initialize idDate to 0
+$idDate = 0;
+
 // Parse data from CSV file line by line        
 while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
     // Get row data
-    $idDate = $getData[0];
-    $csvDate = $getData[1];
-    $numWeek = $getData[2];
-    $nameOf = $getData[3];
-    $continuousHoliday = $getData[4];
-    $nameDay = $getData[5];
-    $checkHoliday = $getData[6];
-    $nameType = $getData[7];
+    $csvDate = $getData[0];
+    $numWeek = $getData[1];
+    $nameOf = $getData[2];
+    $continuousHoliday = $getData[3];
+    $nameDay = $getData[4];
+    $checkHoliday = $getData[5];
+    $nameType = $getData[6];
 
     // Convert the CSV date format to MySQL format
-    $dateObj = DateTime::createFromFormat('Y-m-d', $csvDate);
+    $dateObj = DateTime::createFromFormat('m/d/Y', $csvDate);
     $date = $dateObj ? $dateObj->format('Y-m-d') : null;
 
     // Get corresponding IDs from other tables
-    $idNoWeek = $numWeek; // Assuming numWeek is equivalent to idNoWeek
+    $idNoWeek = $numWeek;
     $idName = getIdFromTable($conn, 'nameof', 'idName', 'nameOf', $nameOf);
     $idCheckCon = getIdFromTable($conn, 'checkcon', 'idCheckCon', 'continuousHoliday', $continuousHoliday);
     $idDay = getIdFromTable($conn, 'dayofweek', 'idDay', 'nameDay', $nameDay);
@@ -40,11 +42,14 @@ while (($getData = fgetcsv($csvFile, 10000, ",")) !== FALSE) {
 
     // Check if all required IDs are valid
     if ($idName !== null && $idCheckCon !== null && $idDay !== null && $idCheckRest !== null && $idType !== null) {
-        // Insert the data into the 'date' table
+        // Increment idDate
+        $idDate++;
+
+        // Insert the data into the 'date' table with idDate
         $insertQuery = "INSERT INTO date 
                         SET idDate = '$idDate', 
                             date = '$date', 
-                            idNoWeek = '$idNoWeek', 
+                            idNoWeek = '$idNoWeek',
                             idName = '$idName', 
                             idCheckCon = '$idCheckCon', 
                             idDay = '$idDay', 
@@ -64,8 +69,8 @@ fclose($csvFile);
 echo "<script>
     $(document).ready(function() {
         Swal.fire({
-            title: 'สำเร็จ',
-            text: 'เพิ่มข้อมูลสำเร็จ!',
+            title: 'Success',
+            text: 'Data added successfully!',
             icon: 'success',
             timer: 5000,
             showConfirmButton: false
@@ -94,5 +99,4 @@ function getIdFromTable($conn, $tableName, $idColumnName, $valueColumnName, $val
     $row = mysqli_fetch_assoc($result);
     return $row ? $row[$idColumnName] : null;
 }
-
 ?>
